@@ -85,7 +85,7 @@ class GPT(nn.Module):
             
         self.lm_head = nn.Linear(config.n_embed, config.vocab_size, bias=False)
     
-    def forward(self, idx):
+    def forward(self, idx, targets=None):
         B,T = idx.size()
         token_embeddings = self.transformer.wte(idx)
         position_embeddings = self.transformer.wpe(torch.arange(T, device=idx.device))
@@ -93,8 +93,13 @@ class GPT(nn.Module):
         for block in self.transformer.h:
             x = block(x)
         x = self.transformer.ln_f(x)
+        
         logits = self.lm_head(x)
-        return logits
+        if targets is not None:
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1)
+        else:
+            loss = None
+        return logits, loss
 
         
     @classmethod
@@ -153,6 +158,25 @@ if use_pretrained:
 else:
     print("Loading random (untrained) GPT-2 model...")
     model = GPT(GPTConfig())
+
+## get dataset
+import tiktoken
+
+with open("input.txt",  "r") as f:
+    data = f.read()
+tokenizer = tiktoken.get_encoding("gpt2")
+tokens = tokenizer.encode(data[:1000])
+B,T = 4,32
+
+import torch
+a = torch.tensor(tokens[:B*T+1])
+
+x= a[:-1].view(B,T)
+y = a[1:].view(B,T)
+
+logits ,loss = model(x,y)
+print(loss)
+sys.exit(0)
 
 model.eval()
 model.to(device)

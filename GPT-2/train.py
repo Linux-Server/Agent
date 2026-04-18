@@ -131,6 +131,7 @@ class GPT(nn.Module):
         return gpt
 
 model = GPT.from_pretrained("gpt2")
+model.eval()
 
 import tiktoken
 tokenizer = tiktoken.get_encoding("gpt2")
@@ -138,11 +139,12 @@ text = "Hello, how are you?"
 tokens = tokenizer.encode(text)
 tokens = torch.tensor(tokens).unsqueeze(0)
 
-while tokens.size(1) < 50:
-    logits = model(tokens)
-    next_token_logits = logits[:, -1, :]
-    next_token = torch.argmax(next_token_logits, dim=-1).unsqueeze(0)
-    tokens = torch.cat((tokens, next_token), dim=1)
+with torch.no_grad():
+    while tokens.size(1) < 50:
+        logits = model(tokens)
+        next_token_logits = logits[:, -1, :]
+        next_token = torch.argmax(next_token_logits, dim=-1).unsqueeze(0)
+        tokens = torch.cat((tokens, next_token), dim=1)
 print(tokenizer.decode(tokens.squeeze().tolist()))
 
 

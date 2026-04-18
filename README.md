@@ -8,7 +8,7 @@ Traditional deploymnet
 6. Domain
 7. Hosted
 8. PM2 = process manager
-9. CI/CD (Continous Integration / Contnous Deploynmet)
+9. CI/CD (Continous Integration / Contnous Deploynmet) - GithubAction,  Circle CI, Jenkins
 
 
 Modern Deploymnet

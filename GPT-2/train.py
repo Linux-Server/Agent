@@ -130,22 +130,44 @@ class GPT(nn.Module):
         gpt.lm_head.weight.data.copy_(model.lm_head.weight.data)
         return gpt
 
-model = GPT.from_pretrained("gpt2")
-model.eval()
-
 import tiktoken
+import sys
+
+# Device selection: --device cpu|cuda|mps (auto-detects best available by default)
+if "--device" in sys.argv:
+    device = sys.argv[sys.argv.index("--device") + 1]
+elif torch.cuda.is_available():
+    device = "cuda"
+elif torch.backends.mps.is_available():
+    device = "mps"
+else:
+    device = "cpu"
+
+print(f"Using device: {device}")
+
+use_pretrained = "--pretrained" in sys.argv or "--random" not in sys.argv
+
+if use_pretrained:
+    print("Loading pretrained GPT-2 weights...")
+    model = GPT.from_pretrained("gpt2")
+else:
+    print("Loading random (untrained) GPT-2 model...")
+    model = GPT(GPTConfig())
+
+model.eval()
+model.to(device)
+
 tokenizer = tiktoken.get_encoding("gpt2")
 text = "Hello, how are you?"
 tokens = tokenizer.encode(text)
-tokens = torch.tensor(tokens).unsqueeze(0)
+tokens = torch.tensor(tokens, device=device).unsqueeze(0)
 
 with torch.no_grad():
     while tokens.size(1) < 50:
         logits = model(tokens)
-        next_token_logits = logits[:, -1, :]
-        next_token = torch.argmax(next_token_logits, dim=-1).unsqueeze(0)
+        next_token_logits = logits[:, -1, :] / 0.8  # temperature: lower = more focused, higher = more random
+        probs = F.softmax(next_token_logits, dim=-1)
+        next_token = torch.multinomial(probs, num_samples=1)
         tokens = torch.cat((tokens, next_token), dim=1)
 print(tokenizer.decode(tokens.squeeze().tolist()))
 
-
-    
